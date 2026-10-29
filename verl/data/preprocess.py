@@ -1,7 +1,5 @@
-import os
-
-import datasets
-
+import argparse
+from pathlib import Path
 
 def make_map_fn(split, source=None):
         def process_fn(example, idx):
@@ -34,13 +32,22 @@ def make_map_fn(split, source=None):
 
 if __name__ == '__main__':
 
-    data_source = 'MATH-L5-TTT'
+    parser = argparse.ArgumentParser(description="Convert a TTRL JSON task to veRL Parquet files.")
+    parser.add_argument("--data-source", default="MATH-L5-TTT", help="Task directory name, e.g. MATH-TTT.")
+    parser.add_argument("--data-dir", type=Path, default=Path(__file__).resolve().parent,
+                        help="Parent directory containing the task directory (defaults to this script's directory).")
+    args = parser.parse_args()
+    data_source = args.data_source
+    task_dir = args.data_dir / data_source
 
-    train_dataset = datasets.load_dataset("json", data_files=os.path.join(data_source, 'train.json'), split='train')
-    test_dataset = datasets.load_dataset("json", data_files=os.path.join(data_source, 'test.json'), split='train')
+    import datasets
+
+    train_dataset = datasets.load_dataset("json", data_files=str(task_dir / 'train.json'), split='train')
+    test_dataset = datasets.load_dataset("json", data_files=str(task_dir / 'test.json'), split='train')
 
     train_dataset = train_dataset.map(function=make_map_fn("train", data_source), with_indices=True)
     test_dataset = test_dataset.map(function=make_map_fn("test", data_source), with_indices=True)
 
-    train_dataset.to_parquet(os.path.join(data_source, 'train.parquet'))
-    test_dataset.to_parquet(os.path.join(data_source, 'test.parquet'))
+    train_dataset.to_parquet(str(task_dir / 'train.parquet'))
+    test_dataset.to_parquet(str(task_dir / 'test.parquet'))
+    print(f"Converted {data_source}: train={len(train_dataset)}, test={len(test_dataset)}, output={task_dir}")
